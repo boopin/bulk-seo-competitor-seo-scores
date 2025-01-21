@@ -7,10 +7,9 @@ from datetime import datetime
 class SEOScorer:
     def __init__(self):
         self.weights = {
-            'content_seo': 0.3,
-            'technical_seo': 0.3,
-            'user_experience': 0.2,
-            'off_page_seo': 0.2
+            'content_seo': 0.4,  # Adjusted weight after removing off-page SEO
+            'technical_seo': 0.4,
+            'user_experience': 0.2
         }
 
     def analyze_content_seo(self, df):
@@ -112,7 +111,7 @@ class SEOScorer:
             'User Experience': ux_score * self.weights['user_experience']
         }
 
-        overall_score = sum(weighted_scores.values()) / sum(self.weights.values()) * 100
+        overall_score = sum(weighted_scores.values()) * 100
         return round(overall_score)
 
     def identify_weaknesses(self, content_score, technical_score, ux_score):
