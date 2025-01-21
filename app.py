@@ -88,10 +88,16 @@ class SEOScorer:
         scores['mobile_friendly'] = round(mobile_score)
 
         lcp_score = 0
-        if 'LCP' in df.columns:
-            good_lcp = df['LCP'] <= 2.5
+        if 'Largest Contentful Paint Time (ms)' in df.columns:
+            good_lcp = df['Largest Contentful Paint Time (ms)'] <= 2500
             lcp_score = good_lcp.mean() * 100
         scores['largest_contentful_paint'] = round(lcp_score)
+
+        cls_score = 0
+        if 'Cumulative Layout Shift' in df.columns:
+            good_cls = df['Cumulative Layout Shift'] <= 0.1
+            cls_score = good_cls.mean() * 100
+        scores['cumulative_layout_shift'] = round(cls_score)
 
         return round(np.mean(list(scores.values()))), scores
 
