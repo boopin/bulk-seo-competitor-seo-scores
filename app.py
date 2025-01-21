@@ -123,6 +123,7 @@ class SEOScorer:
         return weaknesses
 
 def main():
+    st.set_page_config(page_title="SEO Competitor Analysis", layout="wide")
     st.title("SEO Readiness Score Comparison")
     st.write("Upload Screaming Frog exports for your client and competitors to generate comparative scores and weaknesses.")
 
