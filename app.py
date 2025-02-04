@@ -149,8 +149,9 @@ class SEOScorer:
             return "No major issues detected."
 
 def main():
-    st.set_page_config(page_title="SEO Competitor Analysis", layout="wide")
-    st.title("SEO Readiness Bulk Score Comparison")
+    st.set_page_config(page_title="SEO Pulse", layout="wide")
+    st.title("SEO Pulse")
+    st.write("Transforming competitor SEO audits into actionable insights with precision and speed.")
     st.write("Upload Screaming Frog exports for your client and competitors to generate comparative scores and weaknesses.")
 
     uploaded_files = st.file_uploader("Upload Files", type=['csv', 'xlsx'], accept_multiple_files=True)
