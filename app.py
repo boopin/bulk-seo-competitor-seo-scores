@@ -826,7 +826,14 @@ def main():
                         filtered_recs = recommendations.copy()
                         
                         if priority_filter != "All":
-                            filtered_recs = [r for r in filtered_recs if priority_filter.lower().replace(" ", "_") in data['AI Recommendations'][0]['priority_score'] >= 4 if priority_filter == "Critical Priority" else True]
+                            if priority_filter == "Critical Priority":
+                                filtered_recs = [r for r in filtered_recs if r['priority_score'] >= 4]
+                            elif priority_filter == "High Priority":
+                                filtered_recs = [r for r in filtered_recs if 3 <= r['priority_score'] < 4]
+                            elif priority_filter == "Medium Priority":
+                                filtered_recs = [r for r in filtered_recs if 2 <= r['priority_score'] < 3]
+                            elif priority_filter == "Low Priority":
+                                filtered_recs = [r for r in filtered_recs if r['priority_score'] < 2]
                         
                         if category_filter != "All":
                             filtered_recs = [r for r in filtered_recs if r['category'] == category_filter]
@@ -837,7 +844,6 @@ def main():
                         
                         # Display recommendations
                         for j, rec in enumerate(filtered_recs[:10]):  # Show top 10
-                            priority_label = data['AI Recommendations'][0] if recommendations else ""
                             priority_label = "🔴 Critical" if rec['priority_score'] >= 4 else "🟠 High" if rec['priority_score'] >= 3 else "🟡 Medium" if rec['priority_score'] >= 2 else "🟢 Low"
                             
                             effort_emoji = {"quick_win": "⚡", "easy": "🟢", "moderate": "🟡", "complex": "🟠", "major": "🔴"}
