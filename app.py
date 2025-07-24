@@ -122,99 +122,160 @@ class SEOScorer:
         weaknesses = []
         detailed_analysis = {}
 
+        # Meta Title Analysis
         title_score = 0
-        if 'Title 1' in df.columns and 'Title 1 Length' in df.columns:
+        if 'Title 1' in df.columns:
             valid_titles = df['Title 1'].notna()
-            good_length = (df['Title 1 Length'] >= 30) & (df['Title 1 Length'] <= 60)
-            title_score = ((valid_titles & good_length).mean() * 100)
+            if 'Title 1 Length' in df.columns:
+                good_length = (df['Title 1 Length'] >= 30) & (df['Title 1 Length'] <= 60)
+                title_score = ((valid_titles & good_length).mean() * 100)
+            else:
+                title_score = valid_titles.mean() * 100
+            
             if title_score < 50:
                 weaknesses.append("Short or missing meta titles.")
-            detailed_analysis['meta_title'] = {
-                'status': '✓' if title_score >= 70 else '✗',
-                'score': title_score,
-                'description': 'Optimized Meta Title & Description Optimization'
-            }
+        
+        detailed_analysis['meta_title'] = {
+            'status': '✓' if title_score >= 70 else '✗',
+            'score': title_score,
+            'description': 'Optimized Meta Title & Description Optimization',
+            'needs_improvement': title_score < 70
+        }
         scores['meta_title'] = round(title_score)
 
+        # Meta Description Analysis
         desc_score = 0
-        if 'Meta Description 1' in df.columns and 'Meta Description 1 Length' in df.columns:
+        if 'Meta Description 1' in df.columns:
             valid_desc = df['Meta Description 1'].notna()
-            good_length = (df['Meta Description 1 Length'] >= 120) & (df['Meta Description 1 Length'] <= 160)
-            desc_score = ((valid_desc & good_length).mean() * 100)
+            if 'Meta Description 1 Length' in df.columns:
+                good_length = (df['Meta Description 1 Length'] >= 120) & (df['Meta Description 1 Length'] <= 160)
+                desc_score = ((valid_desc & good_length).mean() * 100)
+            else:
+                desc_score = valid_desc.mean() * 100
+            
             if desc_score < 50:
                 weaknesses.append("Short or missing meta descriptions.")
         scores['meta_description'] = round(desc_score)
 
+        # Headers Analysis
         h1_score = 0
         if 'H1-1' in df.columns:
             h1_score = df['H1-1'].notna().mean() * 100
             if h1_score < 50:
                 weaknesses.append("Missing or poorly optimized H1 tags.")
-            detailed_analysis['headers'] = {
-                'status': '✓' if h1_score >= 70 else '✗',
-                'score': h1_score,
-                'description': 'Optimized Headers'
-            }
+        elif 'H1' in df.columns:
+            h1_score = df['H1'].notna().mean() * 100
+            if h1_score < 50:
+                weaknesses.append("Missing or poorly optimized H1 tags.")
+        
+        detailed_analysis['headers'] = {
+            'status': '✓' if h1_score >= 70 else '✗',
+            'score': h1_score,
+            'description': 'Optimized Headers',
+            'needs_improvement': h1_score < 70
+        }
         scores['h1_tags'] = round(h1_score)
 
-        # Schema markup analysis
+        # Schema markup analysis - check actual columns
         schema_score = 0
-        if 'Schema.org Microdata' in df.columns or 'JSON-LD' in df.columns:
-            has_schema = (df.get('Schema.org Microdata', pd.Series()).notna() | 
-                         df.get('JSON-LD', pd.Series()).notna())
+        schema_columns = ['Schema.org Microdata', 'JSON-LD', 'Structured Data', 'Schema']
+        found_schema_col = None
+        for col in schema_columns:
+            if col in df.columns:
+                found_schema_col = col
+                break
+        
+        if found_schema_col:
+            has_schema = df[found_schema_col].notna()
             schema_score = has_schema.mean() * 100
+        
         detailed_analysis['schema'] = {
             'status': '✓' if schema_score >= 70 else '✗',
             'score': schema_score,
-            'description': 'Missing Schema Markups'
+            'description': 'Missing Schema Markups',
+            'needs_improvement': schema_score < 70
         }
 
-        # Keyword density
-        keyword_score = 50  # Default average
+        # Keyword density - try to find actual data
+        keyword_score = 0
+        keyword_columns = ['Keyword Density', 'Keywords', 'Primary Keyword']
+        for col in keyword_columns:
+            if col in df.columns:
+                keyword_data = df[col].notna()
+                keyword_score = keyword_data.mean() * 100
+                break
+        
         detailed_analysis['keyword_density'] = {
-            'status': '✗',
+            'status': '✓' if keyword_score >= 70 else '✗',
             'score': keyword_score,
-            'description': 'Keyword Density'
+            'description': 'Keyword Density',
+            'needs_improvement': keyword_score < 70
         }
 
-        # Image alt text
+        # Image alt text - check for actual image columns
         img_alt_score = 0
         if 'Images' in df.columns and 'Images Missing Alt Text' in df.columns:
             total_images = df['Images'].fillna(0)
             missing_alt = df['Images Missing Alt Text'].fillna(0)
-            img_alt_score = ((total_images - missing_alt) / total_images.replace(0, 1)).mean() * 100
+            pages_with_images = (total_images > 0).sum()
+            if pages_with_images > 0:
+                img_alt_score = ((total_images - missing_alt) / total_images.replace(0, 1)).mean() * 100
+        elif 'Images without Alt Text' in df.columns:
+            missing_alt = df['Images without Alt Text'].fillna(0)
+            img_alt_score = ((missing_alt == 0).mean() * 100)
+        
         detailed_analysis['image_alt'] = {
-            'status': '✗',
+            'status': '✓' if img_alt_score >= 70 else '✗',
             'score': img_alt_score,
-            'description': 'Image Alt Text'
+            'description': 'Image Alt Text',
+            'needs_improvement': img_alt_score < 70
         }
 
+        # Internal linking
         internal_linking_score = 0
-        if 'Inlinks' in df.columns and 'Unique Inlinks' in df.columns:
+        if 'Inlinks' in df.columns:
             has_inlinks = df['Inlinks'] > 0
-            has_unique_inlinks = df['Unique Inlinks'] > 0
-            internal_linking_score = ((has_inlinks & has_unique_inlinks).mean() * 100)
+            internal_linking_score = has_inlinks.mean() * 100
             if internal_linking_score < 50:
                 weaknesses.append("Insufficient internal linking.")
-            detailed_analysis['internal_linking'] = {
-                'status': '✓' if internal_linking_score >= 70 else '✗',
-                'score': internal_linking_score,
-                'description': 'Internal Linking'
-            }
+        elif 'Internal Links' in df.columns:
+            has_inlinks = df['Internal Links'] > 0
+            internal_linking_score = has_inlinks.mean() * 100
+            if internal_linking_score < 50:
+                weaknesses.append("Insufficient internal linking.")
+        
+        detailed_analysis['internal_linking'] = {
+            'status': '✓' if internal_linking_score >= 70 else '✗',
+            'score': internal_linking_score,
+            'description': 'Internal Linking',
+            'needs_improvement': internal_linking_score < 70
+        }
         scores['internal_linking'] = round(internal_linking_score)
 
+        # Content quality
         content_quality_score = 0
-        if 'Word Count' in df.columns and 'Flesch Reading Ease Score' in df.columns:
+        word_count_good = 0
+        readability_good = 0
+        
+        if 'Word Count' in df.columns:
             good_length = df['Word Count'] >= 300
+            word_count_good = good_length.mean() * 100
+        
+        if 'Flesch Reading Ease Score' in df.columns:
             readable = df['Flesch Reading Ease Score'] >= 60
-            content_quality_score = ((good_length & readable).mean() * 100)
+            readability_good = readable.mean() * 100
+        
+        if word_count_good > 0 or readability_good > 0:
+            content_quality_score = (word_count_good + readability_good) / 2
             if content_quality_score < 50:
                 weaknesses.append("Low content quality or poor readability.")
-            detailed_analysis['editorial_content'] = {
-                'status': '✓' if content_quality_score >= 70 else '✗',
-                'score': content_quality_score,
-                'description': 'Editorial Content'
-            }
+        
+        detailed_analysis['editorial_content'] = {
+            'status': '✓' if content_quality_score >= 70 else '✗',
+            'score': content_quality_score,
+            'description': 'Editorial Content',
+            'needs_improvement': content_quality_score < 70
+        }
         scores['content_quality'] = round(content_quality_score)
 
         return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
@@ -224,91 +285,181 @@ class SEOScorer:
         weaknesses = []
         detailed_analysis = {}
 
-        # Mobile and Desktop Speed
-        mobile_speed = 9.1  # From your example
-        desktop_speed = 3.4  # From your example
-        
-        detailed_analysis['mobile_speed'] = {
-            'status': 'Needs Improvement' if mobile_speed > 3 else '✓',
-            'score': max(0, 100 - (mobile_speed * 10)),
-            'description': f'Mobile Speed: {mobile_speed}s',
-            'needs_improvement': mobile_speed > 3
-        }
-        
-        detailed_analysis['desktop_speed'] = {
-            'status': 'Needs Improvement' if desktop_speed > 3 else '✓',
-            'score': max(0, 100 - (desktop_speed * 10)),
-            'description': f'Desktop Speed: {desktop_speed}s',
-            'needs_improvement': desktop_speed > 3
-        }
-
+        # Response Time / Speed Analysis
+        mobile_speed = None
+        desktop_speed = None
         response_score = 0
+        
+        # Try to find actual speed/response time data
         if 'Response Time' in df.columns:
+            avg_response = df['Response Time'].mean()
             good_response = df['Response Time'] <= 1.0
             response_score = good_response.mean() * 100
             if response_score < 50:
                 weaknesses.append("Slow response times.")
+        elif 'Mobile Speed' in df.columns:
+            mobile_speed = df['Mobile Speed'].mean()
+        elif 'Page Speed' in df.columns:
+            avg_speed = df['Page Speed'].mean()
+            response_score = max(0, 100 - (avg_speed * 10))
+
+        # Mobile Speed Analysis
+        if mobile_speed is None and 'Response Time' in df.columns:
+            mobile_speed = df['Response Time'].mean()
+        elif mobile_speed is None:
+            mobile_speed = 3.5  # Default if no data found
+            
+        detailed_analysis['mobile_speed'] = {
+            'status': 'Needs Improvement' if mobile_speed > 3 else '✓',
+            'score': max(0, 100 - (mobile_speed * 10)),
+            'description': f'Mobile Speed: {mobile_speed:.1f}s',
+            'needs_improvement': mobile_speed > 3
+        }
+        
+        # Desktop Speed Analysis  
+        if desktop_speed is None:
+            desktop_speed = mobile_speed * 0.7  # Typically faster than mobile
+            
+        detailed_analysis['desktop_speed'] = {
+            'status': 'Needs Improvement' if desktop_speed > 3 else '✓',
+            'score': max(0, 100 - (desktop_speed * 10)),
+            'description': f'Desktop Speed: {desktop_speed:.1f}s',
+            'needs_improvement': desktop_speed > 3
+        }
+
         scores['response_time'] = round(response_score)
 
+        # Status Code Analysis
         status_score = 0
         if 'Status Code' in df.columns:
             good_status = df['Status Code'] == 200
             status_score = good_status.mean() * 100
             if status_score < 70:
                 weaknesses.append("Issues with HTTP status codes.")
+        elif 'HTTP Status Code' in df.columns:
+            good_status = df['HTTP Status Code'] == 200
+            status_score = good_status.mean() * 100
+            if status_score < 70:
+                weaknesses.append("Issues with HTTP status codes.")
+        else:
+            status_score = 85  # Assume mostly good if no data
         scores['status_codes'] = round(status_score)
 
+        # Indexability Analysis
         index_score = 0
         if 'Indexability' in df.columns:
             indexable = df['Indexability'] == 'Indexable'
             index_score = indexable.mean() * 100
             if index_score < 70:
                 weaknesses.append("Pages not indexable.")
+        elif 'Indexable' in df.columns:
+            indexable = df['Indexable'] == 'Yes'
+            index_score = indexable.mean() * 100
+            if index_score < 70:
+                weaknesses.append("Pages not indexable.")
+        else:
+            index_score = 80  # Default assumption
         scores['indexability'] = round(index_score)
 
+        # Canonical Tags Analysis
         canonical_score = 0
-        if 'Canonical Link Element 1' in df.columns:
-            valid_canonical = df['Canonical Link Element 1'].notna()
-            canonical_score = valid_canonical.mean() * 100
-            if canonical_score < 70:
-                weaknesses.append("Improper or missing canonical tags.")
+        canonical_cols = ['Canonical Link Element 1', 'Canonical', 'Canonical URL']
+        for col in canonical_cols:
+            if col in df.columns:
+                valid_canonical = df[col].notna()
+                canonical_score = valid_canonical.mean() * 100
+                break
+        
+        if canonical_score == 0:
+            canonical_score = 75  # Default if no data found
+        
+        if canonical_score < 70:
+            weaknesses.append("Improper or missing canonical tags.")
         scores['canonical_tags'] = round(canonical_score)
 
-        # Additional technical factors
+        # Image Optimization - check actual data
+        img_opt_score = 0
+        if 'Images over 100kb' in df.columns:
+            large_images = df['Images over 100kb'].fillna(0)
+            total_images = df.get('Images', pd.Series([1])).fillna(1)
+            img_opt_score = ((total_images - large_images) / total_images).mean() * 100
+        elif 'Image Size' in df.columns:
+            good_size = df['Image Size'] <= 100000  # 100kb
+            img_opt_score = good_size.mean() * 100
+        else:
+            img_opt_score = 60  # Default assumption
+
         detailed_analysis['image_optimization'] = {
-            'status': '✗',
-            'score': 30,
-            'description': 'Optimized Image Alt-Attributes'
+            'status': '✓' if img_opt_score >= 70 else '✗',
+            'score': img_opt_score,
+            'description': 'Optimized Image Alt-Attributes',
+            'needs_improvement': img_opt_score < 70
         }
 
+        # XML Sitemap - check for actual data
+        sitemap_score = 100
+        if 'XML Sitemap' in df.columns:
+            has_sitemap = df['XML Sitemap'].notna()
+            sitemap_score = has_sitemap.mean() * 100
+        elif 'Sitemap' in df.columns:
+            has_sitemap = df['Sitemap'] == 'Yes'
+            sitemap_score = has_sitemap.mean() * 100
+            
         detailed_analysis['xml_sitemap'] = {
-            'status': '✓',
-            'score': 100,
-            'description': 'XML Sitemap'
+            'status': '✓' if sitemap_score >= 70 else '✗',
+            'score': sitemap_score,
+            'description': 'XML Sitemap',
+            'needs_improvement': sitemap_score < 70
         }
 
+        # Robots.txt Analysis
+        robots_score = 100
+        if 'Robots.txt' in df.columns:
+            has_robots = df['Robots.txt'] == 'Allow'
+            robots_score = has_robots.mean() * 100
+            
         detailed_analysis['robots_txt'] = {
-            'status': '✓',
-            'score': 100,
-            'description': 'Robots.txt File'
+            'status': '✓' if robots_score >= 70 else '✗',
+            'score': robots_score,
+            'description': 'Robots.txt File',
+            'needs_improvement': robots_score < 70
         }
 
+        # HTTPS Analysis
+        https_score = 100
+        if 'Address' in df.columns:
+            is_https = df['Address'].str.startswith('https://', na=False)
+            https_score = is_https.mean() * 100
+        elif 'URL' in df.columns:
+            is_https = df['URL'].str.startswith('https://', na=False)
+            https_score = is_https.mean() * 100
+            
         detailed_analysis['https_urls'] = {
-            'status': '✓',
-            'score': 100,
-            'description': 'Non-HTTPS URLs'
+            'status': '✓' if https_score >= 70 else '✗',
+            'score': https_score,
+            'description': 'Non-HTTPS URLs',
+            'needs_improvement': https_score < 70
         }
 
+        # SSR Content Analysis (default assumption)
         detailed_analysis['ssr_content'] = {
             'status': '✓',
-            'score': 100,
-            'description': 'Mostly SSR loaded content'
+            'score': 85,
+            'description': 'Mostly SSR loaded content',
+            'needs_improvement': False
         }
 
+        # Hreflang Analysis
+        hreflang_score = 90
+        if 'Hreflang' in df.columns:
+            has_hreflang = df['Hreflang'].notna()
+            hreflang_score = has_hreflang.mean() * 100
+            
         detailed_analysis['hreflang_tags'] = {
-            'status': '✓',
-            'score': 100,
-            'description': 'Optimized Hreflang Tags'
+            'status': '✓' if hreflang_score >= 70 else '✗',
+            'score': hreflang_score,
+            'description': 'Optimized Hreflang Tags',
+            'needs_improvement': hreflang_score < 70
         }
 
         return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
@@ -318,44 +469,130 @@ class SEOScorer:
         weaknesses = []
         detailed_analysis = {}
 
+        # Mobile Friendliness Analysis
         mobile_score = 0
-        if 'Mobile Alternate Link' in df.columns:
+        if 'Mobile Friendly' in df.columns:
+            mobile_friendly = df['Mobile Friendly'] == 'Yes'
+            mobile_score = mobile_friendly.mean() * 100
+        elif 'Mobile Alternate Link' in df.columns:
             mobile_score = df['Mobile Alternate Link'].notna().mean() * 100
-            if mobile_score < 50:
-                weaknesses.append("Pages not mobile-friendly.")
+        elif 'Viewport' in df.columns:
+            has_viewport = df['Viewport'].notna()
+            mobile_score = has_viewport.mean() * 100
+        else:
+            # Check if pages are likely mobile-friendly based on meta viewport
+            mobile_score = 60  # Default assumption
+            
+        if mobile_score < 50:
+            weaknesses.append("Pages not mobile-friendly.")
         
         detailed_analysis['mobile_friendly'] = {
-            'status': '✗',
+            'status': '✓' if mobile_score >= 70 else '✗',
             'score': mobile_score,
-            'description': 'Mobile Friendliness'
+            'description': 'Mobile Friendliness',
+            'needs_improvement': mobile_score < 70
         }
         scores['mobile_friendly'] = round(mobile_score)
 
-        # Rich Search Results
+        # Rich Search Results / Structured Data
+        rich_score = 0
+        structured_data_cols = ['Schema.org Microdata', 'JSON-LD', 'Structured Data', 'Rich Snippets']
+        for col in structured_data_cols:
+            if col in df.columns:
+                has_structured = df[col].notna()
+                rich_score = has_structured.mean() * 100
+                break
+        
+        if rich_score == 0:
+            rich_score = 45  # Default lower score if no structured data found
+            
         detailed_analysis['rich_search'] = {
-            'status': '✓',
-            'score': 80,
+            'status': '✓' if rich_score >= 70 else '✗',
+            'score': rich_score,
             'description': 'Rich Search Result Optimization',
-            'needs_improvement': True
+            'needs_improvement': rich_score < 70
         }
 
+        # Core Web Vitals - Largest Contentful Paint
         lcp_score = 0
         if 'Largest Contentful Paint Time (ms)' in df.columns:
             good_lcp = df['Largest Contentful Paint Time (ms)'] <= 2500
             lcp_score = good_lcp.mean() * 100
             if lcp_score < 50:
                 weaknesses.append("Slow LCP times.")
+        elif 'LCP' in df.columns:
+            good_lcp = df['LCP'] <= 2.5
+            lcp_score = good_lcp.mean() * 100
+            if lcp_score < 50:
+                weaknesses.append("Slow LCP times.")
+        else:
+            # Estimate based on response time if available
+            if 'Response Time' in df.columns:
+                avg_response = df['Response Time'].mean()
+                lcp_score = max(0, 100 - (avg_response * 20))
+            else:
+                lcp_score = 55  # Default assumption
         scores['largest_contentful_paint'] = round(lcp_score)
 
+        # Cumulative Layout Shift
         cls_score = 0
         if 'Cumulative Layout Shift' in df.columns:
             good_cls = df['Cumulative Layout Shift'] <= 0.1
             cls_score = good_cls.mean() * 100
             if cls_score < 50:
                 weaknesses.append("High CLS values.")
+        elif 'CLS' in df.columns:
+            good_cls = df['CLS'] <= 0.1
+            cls_score = good_cls.mean() * 100
+            if cls_score < 50:
+                weaknesses.append("High CLS values.")
+        else:
+            cls_score = 70  # Default assumption for CLS
         scores['cumulative_layout_shift'] = round(cls_score)
 
         return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
+
+    def analyze_offpage_seo(self, df):
+        """Analyze off-page SEO factors"""
+        detailed_analysis = {}
+        
+        # Authority Score - try to find actual domain authority or similar metrics
+        authority_score = 50  # Default
+        if 'Domain Authority' in df.columns:
+            authority_score = df['Domain Authority'].mean()
+        elif 'Page Authority' in df.columns:
+            authority_score = df['Page Authority'].mean()
+        elif 'Trust Score' in df.columns:
+            authority_score = df['Trust Score'].mean()
+        
+        detailed_analysis['authority_score'] = {
+            'status': 'Needs Improvement' if authority_score < 60 else '✓',
+            'score': authority_score,
+            'description': f'Authority Score: {authority_score:.0f}',
+            'needs_improvement': authority_score < 60
+        }
+        
+        # Backlinking Profile - try to find backlink data
+        backlink_score = 65  # Default
+        if 'External Inlinks' in df.columns:
+            has_backlinks = df['External Inlinks'] > 0
+            backlink_score = has_backlinks.mean() * 100
+        elif 'Backlinks' in df.columns:
+            has_backlinks = df['Backlinks'] > 0
+            backlink_score = has_backlinks.mean() * 100
+        elif 'Referring Domains' in df.columns:
+            has_referring = df['Referring Domains'] > 0
+            backlink_score = has_referring.mean() * 100
+        
+        detailed_analysis['backlinks'] = {
+            'status': '✓' if backlink_score >= 70 else 'Needs Improvement',
+            'score': backlink_score,
+            'description': 'Backlinking Profile',
+            'needs_improvement': backlink_score < 70
+        }
+        
+        return detailed_analysis
+
 
     def analyze_offpage_seo(self, df):
         """Analyze off-page SEO factors"""
