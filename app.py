@@ -852,15 +852,68 @@ def main():
                 
                 for analysis in detailed_analyses:
                     site_name = analysis['File Name'].replace('.csv', '').replace('.xlsx', '')
-                    detailed_table_html = create_detailed_audit_table(
-                        site_name,
-                        analysis['Content Analysis'],
-                        analysis['Technical Analysis'], 
-                        analysis['UX Analysis'],
-                        analysis['Offpage Analysis'],
-                        analysis['Overall Score']
-                    )
-                    st.markdown(detailed_table_html, unsafe_allow_html=True)
+                    
+                    # Create header with score circle
+                    col1, col2 = st.columns([3, 1])
+                    with col1:
+                        st.markdown(f"### {site_name} - Technical SEO Audit")
+                    with col2:
+                        score = analysis['Overall Score']
+                        score_color = "#dc3545" if score < 50 else "#ffc107" if score < 80 else "#28a745"
+                        st.markdown(f"""
+                        <div style="text-align: center;">
+                            <div style="display: inline-block; width: 80px; height: 80px; border-radius: 50%; 
+                                        background-color: {score_color}; color: white; 
+                                        line-height: 80px; font-size: 24px; font-weight: bold;">
+                                {score}<br><small style="font-size: 12px;">/100</small>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    
+                    # Create the audit table using Streamlit components
+                    st.markdown("#### Content SEO")
+                    content_data = []
+                    for key, details in analysis['Content Analysis'].items():
+                        status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        content_data.append([details['description'], f"{status}{improvement}"])
+                    
+                    content_df = pd.DataFrame(content_data, columns=['Factor', 'Status'])
+                    st.table(content_df)
+                    
+                    st.markdown("#### Technical SEO")
+                    technical_data = []
+                    for key, details in analysis['Technical Analysis'].items():
+                        if key in ['mobile_speed', 'desktop_speed']:
+                            status = details['status']
+                        else:
+                            status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        technical_data.append([details['description'], f"{status}{improvement}"])
+                    
+                    technical_df = pd.DataFrame(technical_data, columns=['Factor', 'Status'])
+                    st.table(technical_df)
+                    
+                    st.markdown("#### User Experience")
+                    ux_data = []
+                    for key, details in analysis['UX Analysis'].items():
+                        status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        ux_data.append([details['description'], f"{status}{improvement}"])
+                    
+                    ux_df = pd.DataFrame(ux_data, columns=['Factor', 'Status'])
+                    st.table(ux_df)
+                    
+                    st.markdown("#### Off-Page SEO")
+                    offpage_data = []
+                    for key, details in analysis['Offpage Analysis'].items():
+                        status = details['status']
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        offpage_data.append([details['description'], f"{status}{improvement}"])
+                    
+                    offpage_df = pd.DataFrame(offpage_data, columns=['Factor', 'Status'])
+                    st.table(offpage_df)
+                    
                     st.markdown("---")
             
             with tab3:
