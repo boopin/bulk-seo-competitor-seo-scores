@@ -843,18 +843,115 @@ def main():
                 
                 # Summary comparison table (like screenshot 2)
                 st.markdown("### Competitor Comparison Summary")
-                summary_table_html = create_summary_comparison_table(comparison_data)
-                st.markdown(summary_table_html, unsafe_allow_html=True)
+                
+                # Sort by overall score (highest first)
+                sorted_data = sorted(comparison_data, key=lambda x: x['Overall Readiness'], reverse=True)
+                
+                # Create columns for competitor cards
+                cols = st.columns(min(len(sorted_data), 3))  # Max 3 columns
+                
+                for i, data in enumerate(sorted_data):
+                    col_idx = i % 3
+                    with cols[col_idx]:
+                        site_name = data['File Name'].replace('.csv', '').replace('.xlsx', '')
+                        overall_score = data['Overall Readiness']
+                        
+                        # Score circle with color
+                        score_color = "#dc3545" if overall_score < 50 else "#ffc107" if overall_score < 80 else "#28a745"
+                        
+                        # Site header with score
+                        st.markdown(f"""
+                        <div style="text-align: center; margin-bottom: 10px;">
+                            <h4 style="margin-bottom: 10px;">{site_name}</h4>
+                            <div style="display: inline-block; width: 60px; height: 60px; border-radius: 50%; 
+                                        background-color: {score_color}; color: white; 
+                                        line-height: 60px; font-size: 18px; font-weight: bold;">
+                                {overall_score}<br><small style="font-size: 10px;">/100</small>
+                            </div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        
+                        # Issues list
+                        issues = []
+                        if data['Content Summary'] != "No major issues detected.":
+                            content_issues = data['Content Summary'].split('\n')
+                            issues.extend([issue.strip('- ') for issue in content_issues if issue.strip()])
+                        
+                        if data['Technical Summary'] != "No major issues detected.":
+                            technical_issues = data['Technical Summary'].split('\n')
+                            issues.extend([issue.strip('- ') for issue in technical_issues if issue.strip()])
+                        
+                        if data['UX Summary'] != "No major issues detected.":
+                            ux_issues = data['UX Summary'].split('\n')
+                            issues.extend([issue.strip('- ') for issue in ux_issues if issue.strip()])
+                        
+                        # Limit to top 4 issues for display
+                        top_issues = issues[:4] if issues else ["No major issues detected"]
+                        
+                        # Display issues in a container
+                        with st.container():
+                            st.markdown("**Key Issues:**")
+                            for issue in top_issues:
+                                st.markdown(f"• {issue}")
+                        
+                        st.markdown("---")
+                
+                # Add scoring legend
+                st.markdown("### Scoring Legend")
+                col1, col2, col3 = st.columns(3)
+                
+                with col1:
+                    st.markdown("""
+                    <div style="text-align: center; padding: 10px;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border-radius: 50%; 
+                                    background-color: #dc3545; color: white; 
+                                    line-height: 40px; font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                            0-49
+                        </div>
+                        <div><strong>Poor</strong></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col2:
+                    st.markdown("""
+                    <div style="text-align: center; padding: 10px;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border-radius: 50%; 
+                                    background-color: #ffc107; color: white; 
+                                    line-height: 40px; font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                            50-89
+                        </div>
+                        <div><strong>Good</strong></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                with col3:
+                    st.markdown("""
+                    <div style="text-align: center; padding: 10px;">
+                        <div style="display: inline-block; width: 40px; height: 40px; border-radius: 50%; 
+                                    background-color: #28a745; color: white; 
+                                    line-height: 40px; font-size: 14px; font-weight: bold; margin-bottom: 5px;">
+                            90-100
+                        </div>
+                        <div><strong>Excellent</strong></div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                
+                st.markdown("""
+                <div style="text-align: center; margin-top: 20px; font-style: italic; font-size: 16px; 
+                            background-color: #f8f9fa; padding: 15px; border-radius: 8px;">
+                    "All brands should aim for a score above 90"
+                </div>
+                """, unsafe_allow_html=True)
             
             with tab2:
                 # Detailed audit tables (like screenshot 1)
                 st.markdown("## 📋 Detailed SEO Audit Tables")
                 
-                for analysis in detailed_analyses:
+                for i, analysis in enumerate(detailed_analyses):
                     site_name = analysis['File Name'].replace('.csv', '').replace('.xlsx', '')
                     
-                    # Create header with score circle
-                    col1, col2 = st.columns([3, 1])
+                    # Create header with score circle and export options
+                    col1, col2, col3 = st.columns([2, 1, 1])
                     with col1:
                         st.markdown(f"### {site_name} - Technical SEO Audit")
                     with col2:
@@ -870,7 +967,111 @@ def main():
                         </div>
                         """, unsafe_allow_html=True)
                     
-                    # Create the audit table using Streamlit components
+                    # Prepare all audit data for this site
+                    all_audit_data = []
+                    
+                    # Content SEO section
+                    all_audit_data.append(['Content SEO', '', ''])
+                    for key, details in analysis['Content Analysis'].items():
+                        status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                    
+                    # Technical SEO section
+                    all_audit_data.append(['Technical SEO', '', ''])
+                    for key, details in analysis['Technical Analysis'].items():
+                        if key in ['mobile_speed', 'desktop_speed']:
+                            status = details['status']
+                        else:
+                            status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                    
+                    # User Experience section
+                    all_audit_data.append(['User Experience', '', ''])
+                    for key, details in analysis['UX Analysis'].items():
+                        status = "✓" if details['status'] == '✓' else "✗"
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                    
+                    # Off-Page SEO section
+                    all_audit_data.append(['Off-Page SEO', '', ''])
+                    for key, details in analysis['Offpage Analysis'].items():
+                        status = details['status']
+                        improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                        all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                    
+                    # Create comprehensive DataFrame for export
+                    audit_df = pd.DataFrame(all_audit_data, columns=['Category', 'Factor', 'Status'])
+                    
+                    with col3:
+                        st.markdown("**Export Options:**")
+                        
+                        # Excel export for this specific table
+                        output = BytesIO()
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            audit_df.to_excel(writer, sheet_name=f'{site_name}_Audit', index=False)
+                            
+                            # Add formatting
+                            workbook = writer.book
+                            worksheet = writer.sheets[f'{site_name}_Audit']
+                            
+                            # Define formats
+                            header_format = workbook.add_format({
+                                'bold': True,
+                                'text_wrap': True,
+                                'valign': 'top',
+                                'fg_color': '#667eea',
+                                'font_color': 'white',
+                                'border': 1
+                            })
+                            
+                            category_format = workbook.add_format({
+                                'bold': True,
+                                'bg_color': '#f8f9fa',
+                                'border': 1
+                            })
+                            
+                            # Apply header format
+                            for col_num, value in enumerate(audit_df.columns.values):
+                                worksheet.write(0, col_num, value, header_format)
+                            
+                            # Format category rows
+                            for row_num in range(1, len(audit_df) + 1):
+                                if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
+                                    for col_num in range(len(audit_df.columns)):
+                                        worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
+                            
+                            # Set column widths
+                            worksheet.set_column('A:A', 20)  # Category
+                            worksheet.set_column('B:B', 40)  # Factor
+                            worksheet.set_column('C:C', 30)  # Status
+                            
+                            # Add overall score at the top
+                            worksheet.write(0, 4, 'Overall Score', header_format)
+                            worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
+                        
+                        st.download_button(
+                            label=f"📊 Excel - {site_name[:15]}...",
+                            data=output.getvalue(),
+                            file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            help=f"Download {site_name} SEO audit as Excel file",
+                            key=f"excel_export_{i}"
+                        )
+                        
+                        # CSV export for this specific table
+                        csv_data = audit_df.to_csv(index=False)
+                        st.download_button(
+                            label=f"📄 CSV - {site_name[:15]}...",
+                            data=csv_data,
+                            file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            help=f"Download {site_name} SEO audit as CSV file",
+                            key=f"csv_export_{i}"
+                        )
+                    
+                    # Display the tables in Streamlit
                     st.markdown("#### Content SEO")
                     content_data = []
                     for key, details in analysis['Content Analysis'].items():
@@ -915,6 +1116,104 @@ def main():
                     st.table(offpage_df)
                     
                     st.markdown("---")
+                
+                # Bulk export option for all tables
+                st.markdown("### 📥 Bulk Export All Audit Tables")
+                col1, col2 = st.columns(2)
+                
+                with col1:
+                    # Create comprehensive Excel workbook with all sites
+                    bulk_output = BytesIO()
+                    with pd.ExcelWriter(bulk_output, engine='xlsxwriter') as writer:
+                        
+                        for analysis in detailed_analyses:
+                            site_name = analysis['File Name'].replace('.csv', '').replace('.xlsx', '')
+                            
+                            # Prepare audit data for this site
+                            all_audit_data = []
+                            all_audit_data.append(['Content SEO', '', ''])
+                            for key, details in analysis['Content Analysis'].items():
+                                status = "✓" if details['status'] == '✓' else "✗"
+                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                            
+                            all_audit_data.append(['Technical SEO', '', ''])
+                            for key, details in analysis['Technical Analysis'].items():
+                                if key in ['mobile_speed', 'desktop_speed']:
+                                    status = details['status']
+                                else:
+                                    status = "✓" if details['status'] == '✓' else "✗"
+                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                            
+                            all_audit_data.append(['User Experience', '', ''])
+                            for key, details in analysis['UX Analysis'].items():
+                                status = "✓" if details['status'] == '✓' else "✗"
+                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                            
+                            all_audit_data.append(['Off-Page SEO', '', ''])
+                            for key, details in analysis['Offpage Analysis'].items():
+                                status = details['status']
+                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                            
+                            # Create DataFrame and write to Excel
+                            audit_df = pd.DataFrame(all_audit_data, columns=['Category', 'Factor', 'Status'])
+                            sheet_name = site_name[:31]  # Excel sheet name limit
+                            audit_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                            
+                            # Format the sheet
+                            workbook = writer.book
+                            worksheet = writer.sheets[sheet_name]
+                            
+                            # Define formats
+                            header_format = workbook.add_format({
+                                'bold': True,
+                                'text_wrap': True,
+                                'valign': 'top',
+                                'fg_color': '#667eea',
+                                'font_color': 'white',
+                                'border': 1
+                            })
+                            
+                            category_format = workbook.add_format({
+                                'bold': True,
+                                'bg_color': '#f8f9fa',
+                                'border': 1
+                            })
+                            
+                            # Apply header format
+                            for col_num, value in enumerate(audit_df.columns.values):
+                                worksheet.write(0, col_num, value, header_format)
+                            
+                            # Format category rows
+                            for row_num in range(1, len(audit_df) + 1):
+                                if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
+                                    for col_num in range(len(audit_df.columns)):
+                                        worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
+                            
+                            # Set column widths
+                            worksheet.set_column('A:A', 20)
+                            worksheet.set_column('B:B', 40)
+                            worksheet.set_column('C:C', 30)
+                            
+                            # Add overall score
+                            score = analysis['Overall Score']
+                            worksheet.write(0, 4, 'Overall Score', header_format)
+                            worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
+                    
+                    st.download_button(
+                        label="📊 Download All Audits (Excel)",
+                        data=bulk_output.getvalue(),
+                        file_name=f"All_SEO_Audits_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        help="Download all site audits in one Excel workbook (separate sheets)"
+                    )
+                
+                with col2:
+                    st.info("💡 **Pro Tip**: The Excel files are formatted and ready for PowerPoint presentations. Each audit includes color-coded sections and overall scores.")
+                    st.info("📋 **Usage**: Copy tables from Excel directly into PowerPoint slides, or use the structured data for custom visualizations.")
             
             with tab3:
                 # Radar chart comparison
