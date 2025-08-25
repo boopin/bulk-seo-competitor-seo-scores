@@ -6,6 +6,7 @@ from datetime import datetime
 import plotly.express as px
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
+import re
 
 # Configure page settings
 st.set_page_config(
@@ -108,6 +109,59 @@ st.markdown("""
     .score-excellent-bg { background-color: #28a745; }
 </style>
 """, unsafe_allow_html=True)
+
+def sanitize_sheet_name(name):
+    """
+    Sanitize sheet name for Excel compatibility
+    - Remove or replace invalid characters: [ ] : * ? / \
+    - Limit to 31 characters
+    - Ensure it's not empty
+    """
+    if not name:
+        name = "Sheet1"
+    
+    # Remove file extensions
+    name = re.sub(r'\.(csv|xlsx|xls)$', '', name, flags=re.IGNORECASE)
+    
+    # Replace invalid characters with underscore
+    name = re.sub(r'[\[\]:*?/\\]', '_', name)
+    
+    # Remove any other problematic characters
+    name = re.sub(r'[<>"|]', '', name)
+    
+    # Limit to 31 characters (Excel limit)
+    if len(name) > 31:
+        name = name[:28] + "..."
+    
+    # Ensure it's not empty after cleaning
+    if not name.strip():
+        name = "Sheet1"
+    
+    return name.strip()
+
+def safe_file_name(name):
+    """
+    Create a safe file name by removing problematic characters
+    """
+    if not name:
+        name = "file"
+    
+    # Remove file extensions
+    name = re.sub(r'\.(csv|xlsx|xls)$', '', name, flags=re.IGNORECASE)
+    
+    # Replace problematic characters
+    name = re.sub(r'[^\w\-_\.]', '_', name)
+    
+    # Remove consecutive underscores
+    name = re.sub(r'_+', '_', name)
+    
+    # Remove leading/trailing underscores
+    name = name.strip('_')
+    
+    if not name:
+        name = "file"
+    
+    return name
 
 class SEOScorer:
     def __init__(self):
@@ -593,30 +647,6 @@ class SEOScorer:
         
         return detailed_analysis
 
-
-    def analyze_offpage_seo(self, df):
-        """Analyze off-page SEO factors"""
-        detailed_analysis = {}
-        
-        # Authority Score (example value)
-        authority_score = 50
-        detailed_analysis['authority_score'] = {
-            'status': 'Needs Improvement',
-            'score': authority_score,
-            'description': f'Authority Score: {authority_score}',
-            'needs_improvement': True
-        }
-        
-        # Backlinking Profile
-        detailed_analysis['backlinks'] = {
-            'status': '✓',
-            'score': 75,
-            'description': 'Backlinking Profile',
-            'needs_improvement': True
-        }
-        
-        return detailed_analysis
-
     def calculate_overall_score(self, content_score, technical_score, ux_score):
         content_score = content_score / 100
         technical_score = technical_score / 100
@@ -654,200 +684,6 @@ def get_score_circle_class(score):
         return "score-good-bg"
     else:
         return "score-poor-bg"
-
-def create_detailed_audit_table(site_name, content_analysis, technical_analysis, ux_analysis, offpage_analysis, overall_score):
-    """Create detailed audit table like in the first screenshot"""
-    
-    html_content = f"""
-    <div style="margin: 20px 0;">
-        <div style="display: flex; align-items: center; margin-bottom: 20px;">
-            <h2 style="margin: 0; margin-right: 20px;">{site_name} - Technical SEO Audit</h2>
-            <div class="score-circle {get_score_circle_class(overall_score)}">
-                {overall_score}<br><small>/100</small>
-            </div>
-        </div>
-        
-        <table class="audit-table">
-            <tr class="category-header">
-                <td colspan="2"><strong>Content SEO</strong></td>
-            </tr>
-    """
-    
-    # Content SEO rows
-    for key, details in content_analysis.items():
-        status_icon = details['status']
-        description = details['description']
-        needs_improvement = details.get('needs_improvement', False)
-        
-        status_class = "check-mark" if status_icon == '✓' else "x-mark"
-        improvement_text = " - Needs Improvement" if needs_improvement else ""
-        
-        html_content += f"""
-            <tr>
-                <td>{description}</td>
-                <td><span class="{status_class}">{status_icon}</span>{improvement_text}</td>
-            </tr>
-        """
-    
-    # Technical SEO section
-    html_content += """
-            <tr class="category-header">
-                <td colspan="2"><strong>Technical SEO</strong></td>
-            </tr>
-    """
-    
-    for key, details in technical_analysis.items():
-        status_icon = details['status']
-        description = details['description']
-        needs_improvement = details.get('needs_improvement', False)
-        
-        if key in ['mobile_speed', 'desktop_speed']:
-            status_class = "needs-improvement" if needs_improvement else "check-mark"
-        else:
-            status_class = "check-mark" if status_icon == '✓' else "x-mark"
-        
-        improvement_text = " - Needs Improvement" if needs_improvement else ""
-        
-        html_content += f"""
-            <tr>
-                <td>{description}</td>
-                <td><span class="{status_class}">{status_icon}</span>{improvement_text}</td>
-            </tr>
-        """
-    
-    # User Experience section
-    html_content += """
-            <tr class="category-header">
-                <td colspan="2"><strong>User Experience</strong></td>
-            </tr>
-    """
-    
-    for key, details in ux_analysis.items():
-        status_icon = details['status']
-        description = details['description']
-        needs_improvement = details.get('needs_improvement', False)
-        
-        status_class = "check-mark" if status_icon == '✓' else "x-mark"
-        improvement_text = " - Needs Improvement" if needs_improvement else ""
-        
-        html_content += f"""
-            <tr>
-                <td>{description}</td>
-                <td><span class="{status_class}">{status_icon}</span>{improvement_text}</td>
-            </tr>
-        """
-    
-    # Off-Page SEO section
-    html_content += """
-            <tr class="category-header">
-                <td colspan="2"><strong>Off-Page SEO</strong></td>
-            </tr>
-    """
-    
-    for key, details in offpage_analysis.items():
-        status_text = details['status']
-        description = details['description']
-        needs_improvement = details.get('needs_improvement', False)
-        
-        status_class = "needs-improvement" if needs_improvement else "check-mark"
-        improvement_text = " - Needs Improvement" if needs_improvement else ""
-        
-        html_content += f"""
-            <tr>
-                <td>{description}</td>
-                <td><span class="{status_class}">{status_text}</span>{improvement_text}</td>
-            </tr>
-        """
-    
-    html_content += """
-        </table>
-    </div>
-    """
-    
-    return html_content
-
-def create_summary_comparison_table(comparison_data):
-    """Create summary comparison table like in the second screenshot"""
-    
-    html_content = """
-    <div style="margin: 20px 0;">
-        <h2>Overall SEO Performance - Competitor Comparison</h2>
-        <div style="display: flex; flex-wrap: wrap; justify-content: space-around; align-items: flex-start; margin: 20px 0;">
-    """
-    
-    # Sort by overall score (highest first)
-    sorted_data = sorted(comparison_data, key=lambda x: x['Overall Readiness'], reverse=True)
-    
-    for data in sorted_data:
-        site_name = data['File Name'].replace('.csv', '').replace('.xlsx', '')
-        overall_score = data['Overall Readiness']
-        score_class = get_score_circle_class(overall_score)
-        
-        # Get key issues from summaries
-        issues = []
-        if data['Content Summary'] != "No major issues detected.":
-            content_issues = data['Content Summary'].split('\n')
-            issues.extend([issue.strip('- ') for issue in content_issues if issue.strip()])
-        
-        if data['Technical Summary'] != "No major issues detected.":
-            technical_issues = data['Technical Summary'].split('\n')
-            issues.extend([issue.strip('- ') for issue in technical_issues if issue.strip()])
-        
-        if data['UX Summary'] != "No major issues detected.":
-            ux_issues = data['UX Summary'].split('\n')
-            issues.extend([issue.strip('- ') for issue in ux_issues if issue.strip()])
-        
-        # Limit to top 4 issues for display
-        top_issues = issues[:4] if issues else ["No major issues detected"]
-        
-        html_content += f"""
-        <div style="margin: 20px; text-align: center; min-width: 300px;">
-            <div style="display: flex; align-items: center; justify-content: center; margin-bottom: 10px;">
-                <strong style="margin-right: 10px; font-size: 18px;">{site_name}</strong>
-                <div class="score-circle {score_class}">
-                    {overall_score}<br><small>/100</small>
-                </div>
-            </div>
-            <div style="background: #f8f9fa; padding: 15px; border-radius: 8px; text-align: left; min-height: 120px;">
-                <ul style="margin: 0; padding-left: 20px; font-size: 14px;">
-        """
-        
-        for issue in top_issues:
-            html_content += f"<li>{issue}</li>"
-        
-        html_content += """
-                </ul>
-            </div>
-        </div>
-        """
-    
-    html_content += """
-        </div>
-        <div style="margin-top: 30px; text-align: center;">
-            <div style="display: inline-block; background: #f8f9fa; padding: 15px; border-radius: 8px;">
-                <div style="display: flex; align-items: center; gap: 20px;">
-                    <div style="display: flex; align-items: center;">
-                        <div class="score-circle score-poor-bg" style="width: 30px; height: 30px; line-height: 30px; font-size: 12px; margin-right: 8px;">0-49</div>
-                        <span>Poor</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div class="score-circle score-good-bg" style="width: 30px; height: 30px; line-height: 30px; font-size: 12px; margin-right: 8px;">50-89</div>
-                        <span>Good</span>
-                    </div>
-                    <div style="display: flex; align-items: center;">
-                        <div class="score-circle score-excellent-bg" style="width: 30px; height: 30px; line-height: 30px; font-size: 12px; margin-right: 8px;">90-100</div>
-                        <span>Excellent</span>
-                    </div>
-                </div>
-                <div style="margin-top: 10px; font-style: italic;">
-                    "All brands should aim for a score above 90"
-                </div>
-            </div>
-        </div>
-    </div>
-    """
-    
-    return html_content
 
 def create_gauge_chart(score, title):
     """Create a gauge chart for scores"""
@@ -890,11 +726,12 @@ def create_comparison_chart(comparison_df):
     categories = ['Content SEO', 'Technical SEO', 'User Experience', 'Overall Readiness']
     
     for _, row in comparison_df.iterrows():
+        site_name = safe_file_name(row['File Name'])
         fig.add_trace(go.Scatterpolar(
             r=[row['Content SEO'], row['Technical SEO'], row['User Experience'], row['Overall Readiness']],
             theta=categories,
             fill='toself',
-            name=row['File Name'].replace('.csv', '').replace('.xlsx', ''),
+            name=site_name,
             line=dict(width=2)
         ))
     
@@ -1078,7 +915,7 @@ def main():
                         help="Average overall SEO readiness score"
                     )
                 
-                # Summary comparison table (like screenshot 2)
+                # Summary comparison table
                 st.markdown("### Competitor Comparison Summary")
                 
                 # Sort by overall score (highest first)
@@ -1090,7 +927,7 @@ def main():
                 for i, data in enumerate(sorted_data):
                     col_idx = i % 3
                     with cols[col_idx]:
-                        site_name = data['File Name'].replace('.csv', '').replace('.xlsx', '')
+                        site_name = safe_file_name(data['File Name'])
                         overall_score = data['Overall Readiness']
                         
                         # Score circle with color
@@ -1181,11 +1018,11 @@ def main():
                 """, unsafe_allow_html=True)
             
             with tab2:
-                # Detailed audit tables (like screenshot 1)
+                # Detailed audit tables
                 st.markdown("## 📋 Detailed SEO Audit Tables")
                 
                 for i, analysis in enumerate(detailed_analyses):
-                    site_name = analysis['File Name'].replace('.csv', '').replace('.xlsx', '')
+                    site_name = safe_file_name(analysis['File Name'])
                     
                     # Create header with score circle and export options
                     col1, col2, col3 = st.columns([2, 1, 1])
@@ -1246,67 +1083,75 @@ def main():
                         
                         # Excel export for this specific table
                         output = BytesIO()
-                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                            audit_df.to_excel(writer, sheet_name=f'{site_name}_Audit', index=False)
-                            
-                            # Add formatting
-                            workbook = writer.book
-                            worksheet = writer.sheets[f'{site_name}_Audit']
-                            
-                            # Define formats
-                            header_format = workbook.add_format({
-                                'bold': True,
-                                'text_wrap': True,
-                                'valign': 'top',
-                                'fg_color': '#667eea',
-                                'font_color': 'white',
-                                'border': 1
-                            })
-                            
-                            category_format = workbook.add_format({
-                                'bold': True,
-                                'bg_color': '#f8f9fa',
-                                'border': 1
-                            })
-                            
-                            # Apply header format
-                            for col_num, value in enumerate(audit_df.columns.values):
-                                worksheet.write(0, col_num, value, header_format)
-                            
-                            # Format category rows
-                            for row_num in range(1, len(audit_df) + 1):
-                                if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
-                                    for col_num in range(len(audit_df.columns)):
-                                        worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
-                            
-                            # Set column widths
-                            worksheet.set_column('A:A', 20)  # Category
-                            worksheet.set_column('B:B', 40)  # Factor
-                            worksheet.set_column('C:C', 30)  # Status
-                            
-                            # Add overall score at the top
-                            worksheet.write(0, 4, 'Overall Score', header_format)
-                            worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
+                        try:
+                            with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                                # Use sanitized sheet name
+                                sheet_name = sanitize_sheet_name(f'{site_name}_Audit')
+                                audit_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                                
+                                # Add formatting
+                                workbook = writer.book
+                                worksheet = writer.sheets[sheet_name]
+                                
+                                # Define formats
+                                header_format = workbook.add_format({
+                                    'bold': True,
+                                    'text_wrap': True,
+                                    'valign': 'top',
+                                    'fg_color': '#667eea',
+                                    'font_color': 'white',
+                                    'border': 1
+                                })
+                                
+                                category_format = workbook.add_format({
+                                    'bold': True,
+                                    'bg_color': '#f8f9fa',
+                                    'border': 1
+                                })
+                                
+                                # Apply header format
+                                for col_num, value in enumerate(audit_df.columns.values):
+                                    worksheet.write(0, col_num, value, header_format)
+                                
+                                # Format category rows
+                                for row_num in range(1, len(audit_df) + 1):
+                                    if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
+                                        for col_num in range(len(audit_df.columns)):
+                                            worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
+                                
+                                # Set column widths
+                                worksheet.set_column('A:A', 20)  # Category
+                                worksheet.set_column('B:B', 40)  # Factor
+                                worksheet.set_column('C:C', 30)  # Status
+                                
+                                # Add overall score at the top
+                                worksheet.write(0, 4, 'Overall Score', header_format)
+                                worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
                         
-                        st.download_button(
-                            label=f"📊 Excel - {site_name[:15]}...",
-                            data=output.getvalue(),
-                            file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                            help=f"Download {site_name} SEO audit as Excel file",
-                            key=f"excel_export_{i}"
-                        )
+                            st.download_button(
+                                label=f"📊 Excel - {site_name[:15]}...",
+                                data=output.getvalue(),
+                                file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                                help=f"Download {site_name} SEO audit as Excel file",
+                                key=f"excel_export_{i}"
+                            )
+                        except Exception as e:
+                            st.error(f"Error creating Excel file for {site_name}: {str(e)}")
                         
                         # CSV export for this specific table
-                        csv_data = audit_df.to_csv(index=False)
-                        st.download_button(
-                            label=f"📄 CSV - {site_name[:15]}...",
-                            data=csv_data,
-                            file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                            mime="text/csv",
-                            help=f"Download {site_name} SEO audit as CSV file",
-                            key=f"csv_export_{i}"
-                        )
+                        try:
+                            csv_data = audit_df.to_csv(index=False)
+                            st.download_button(
+                                label=f"📄 CSV - {site_name[:15]}...",
+                                data=csv_data,
+                                file_name=f"{site_name}_SEO_Audit_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                                mime="text/csv",
+                                help=f"Download {site_name} SEO audit as CSV file",
+                                key=f"csv_export_{i}"
+                            )
+                        except Exception as e:
+                            st.error(f"Error creating CSV file for {site_name}: {str(e)}")
                     
                     # Display the tables in Streamlit
                     st.markdown("#### Content SEO")
@@ -1361,92 +1206,95 @@ def main():
                 with col1:
                     # Create comprehensive Excel workbook with all sites
                     bulk_output = BytesIO()
-                    with pd.ExcelWriter(bulk_output, engine='xlsxwriter') as writer:
-                        
-                        for analysis in detailed_analyses:
-                            site_name = analysis['File Name'].replace('.csv', '').replace('.xlsx', '')
+                    try:
+                        with pd.ExcelWriter(bulk_output, engine='xlsxwriter') as writer:
                             
-                            # Prepare audit data for this site
-                            all_audit_data = []
-                            all_audit_data.append(['Content SEO', '', ''])
-                            for key, details in analysis['Content Analysis'].items():
-                                status = "✓" if details['status'] == '✓' else "✗"
-                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
-                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
-                            
-                            all_audit_data.append(['Technical SEO', '', ''])
-                            for key, details in analysis['Technical Analysis'].items():
-                                if key in ['mobile_speed', 'desktop_speed']:
-                                    status = details['status']
-                                else:
+                            for analysis in detailed_analyses:
+                                site_name = safe_file_name(analysis['File Name'])
+                                
+                                # Prepare audit data for this site
+                                all_audit_data = []
+                                all_audit_data.append(['Content SEO', '', ''])
+                                for key, details in analysis['Content Analysis'].items():
                                     status = "✓" if details['status'] == '✓' else "✗"
-                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
-                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
-                            
-                            all_audit_data.append(['User Experience', '', ''])
-                            for key, details in analysis['UX Analysis'].items():
-                                status = "✓" if details['status'] == '✓' else "✗"
-                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
-                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
-                            
-                            all_audit_data.append(['Off-Page SEO', '', ''])
-                            for key, details in analysis['Offpage Analysis'].items():
-                                status = details['status']
-                                improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
-                                all_audit_data.append(['', details['description'], f"{status}{improvement}"])
-                            
-                            # Create DataFrame and write to Excel
-                            audit_df = pd.DataFrame(all_audit_data, columns=['Category', 'Factor', 'Status'])
-                            sheet_name = site_name[:31]  # Excel sheet name limit
-                            audit_df.to_excel(writer, sheet_name=sheet_name, index=False)
-                            
-                            # Format the sheet
-                            workbook = writer.book
-                            worksheet = writer.sheets[sheet_name]
-                            
-                            # Define formats
-                            header_format = workbook.add_format({
-                                'bold': True,
-                                'text_wrap': True,
-                                'valign': 'top',
-                                'fg_color': '#667eea',
-                                'font_color': 'white',
-                                'border': 1
-                            })
-                            
-                            category_format = workbook.add_format({
-                                'bold': True,
-                                'bg_color': '#f8f9fa',
-                                'border': 1
-                            })
-                            
-                            # Apply header format
-                            for col_num, value in enumerate(audit_df.columns.values):
-                                worksheet.write(0, col_num, value, header_format)
-                            
-                            # Format category rows
-                            for row_num in range(1, len(audit_df) + 1):
-                                if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
-                                    for col_num in range(len(audit_df.columns)):
-                                        worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
-                            
-                            # Set column widths
-                            worksheet.set_column('A:A', 20)
-                            worksheet.set_column('B:B', 40)
-                            worksheet.set_column('C:C', 30)
-                            
-                            # Add overall score
-                            score = analysis['Overall Score']
-                            worksheet.write(0, 4, 'Overall Score', header_format)
-                            worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
-                    
-                    st.download_button(
-                        label="📊 Download All Audits (Excel)",
-                        data=bulk_output.getvalue(),
-                        file_name=f"All_SEO_Audits_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        help="Download all site audits in one Excel workbook (separate sheets)"
-                    )
+                                    improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                    all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                                
+                                all_audit_data.append(['Technical SEO', '', ''])
+                                for key, details in analysis['Technical Analysis'].items():
+                                    if key in ['mobile_speed', 'desktop_speed']:
+                                        status = details['status']
+                                    else:
+                                        status = "✓" if details['status'] == '✓' else "✗"
+                                    improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                    all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                                
+                                all_audit_data.append(['User Experience', '', ''])
+                                for key, details in analysis['UX Analysis'].items():
+                                    status = "✓" if details['status'] == '✓' else "✗"
+                                    improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                    all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                                
+                                all_audit_data.append(['Off-Page SEO', '', ''])
+                                for key, details in analysis['Offpage Analysis'].items():
+                                    status = details['status']
+                                    improvement = " - Needs Improvement" if details.get('needs_improvement', False) else ""
+                                    all_audit_data.append(['', details['description'], f"{status}{improvement}"])
+                                
+                                # Create DataFrame and write to Excel
+                                audit_df = pd.DataFrame(all_audit_data, columns=['Category', 'Factor', 'Status'])
+                                sheet_name = sanitize_sheet_name(site_name)
+                                audit_df.to_excel(writer, sheet_name=sheet_name, index=False)
+                                
+                                # Format the sheet
+                                workbook = writer.book
+                                worksheet = writer.sheets[sheet_name]
+                                
+                                # Define formats
+                                header_format = workbook.add_format({
+                                    'bold': True,
+                                    'text_wrap': True,
+                                    'valign': 'top',
+                                    'fg_color': '#667eea',
+                                    'font_color': 'white',
+                                    'border': 1
+                                })
+                                
+                                category_format = workbook.add_format({
+                                    'bold': True,
+                                    'bg_color': '#f8f9fa',
+                                    'border': 1
+                                })
+                                
+                                # Apply header format
+                                for col_num, value in enumerate(audit_df.columns.values):
+                                    worksheet.write(0, col_num, value, header_format)
+                                
+                                # Format category rows
+                                for row_num in range(1, len(audit_df) + 1):
+                                    if audit_df.iloc[row_num-1]['Category'] and not audit_df.iloc[row_num-1]['Factor']:
+                                        for col_num in range(len(audit_df.columns)):
+                                            worksheet.write(row_num, col_num, audit_df.iloc[row_num-1, col_num], category_format)
+                                
+                                # Set column widths
+                                worksheet.set_column('A:A', 20)
+                                worksheet.set_column('B:B', 40)
+                                worksheet.set_column('C:C', 30)
+                                
+                                # Add overall score
+                                score = analysis['Overall Score']
+                                worksheet.write(0, 4, 'Overall Score', header_format)
+                                worksheet.write(1, 4, f"{score}/100", workbook.add_format({'bold': True, 'font_size': 14}))
+                        
+                        st.download_button(
+                            label="📊 Download All Audits (Excel)",
+                            data=bulk_output.getvalue(),
+                            file_name=f"All_SEO_Audits_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            help="Download all site audits in one Excel workbook (separate sheets)"
+                        )
+                    except Exception as e:
+                        st.error(f"Error creating bulk Excel file: {str(e)}")
                 
                 with col2:
                     st.info("💡 **Pro Tip**: The Excel files are formatted and ready for PowerPoint presentations. Each audit includes color-coded sections and overall scores.")
@@ -1481,6 +1329,9 @@ def main():
                 # Format the display dataframe
                 display_df = comparison_df[['File Name', 'Content SEO', 'Technical SEO', 'User Experience', 'Overall Readiness']].copy()
                 
+                # Clean file names for display
+                display_df['File Name'] = display_df['File Name'].apply(safe_file_name)
+                
                 # Apply styling
                 def highlight_scores(val):
                     if isinstance(val, (int, float)):
@@ -1499,7 +1350,8 @@ def main():
                 st.markdown("## 🔍 Detailed Insights")
                 
                 for i, data in enumerate(comparison_data):
-                    with st.expander(f"📈 {data['File Name']} - Detailed Analysis"):
+                    site_name = safe_file_name(data['File Name'])
+                    with st.expander(f"📈 {site_name} - Detailed Analysis"):
                         
                         col1, col2, col3 = st.columns(3)
                         
@@ -1549,51 +1401,61 @@ def main():
                     # Prepare export data
                     export_df = comparison_df.drop(['Content Details', 'Technical Details', 'UX Details'], axis=1)
                     
-                    output = BytesIO()
-                    with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
-                        export_df.to_excel(writer, sheet_name='SEO Analysis', index=False)
-                        
-                        # Add formatting
-                        workbook = writer.book
-                        worksheet = writer.sheets['SEO Analysis']
-                        
-                        # Define formats
-                        header_format = workbook.add_format({
-                            'bold': True,
-                            'text_wrap': True,
-                            'valign': 'top',
-                            'fg_color': '#667eea',
-                            'font_color': 'white',
-                            'border': 1
-                        })
-                        
-                        # Apply header format
-                        for col_num, value in enumerate(export_df.columns.values):
-                            worksheet.write(0, col_num, value, header_format)
-                        
-                        # Set column widths
-                        worksheet.set_column('A:A', 25)  # File Name
-                        worksheet.set_column('B:E', 15)  # Score columns
-                        worksheet.set_column('F:H', 40)  # Summary columns
+                    # Clean file names for export
+                    export_df['File Name'] = export_df['File Name'].apply(safe_file_name)
                     
-                    st.download_button(
-                        label="📊 Download Excel Report",
-                        data=output.getvalue(),
-                        file_name=f"SEO_Comparison_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
-                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-                        help="Download comprehensive SEO analysis report in Excel format"
-                    )
+                    output = BytesIO()
+                    try:
+                        with pd.ExcelWriter(output, engine='xlsxwriter') as writer:
+                            export_df.to_excel(writer, sheet_name='SEO Analysis', index=False)
+                            
+                            # Add formatting
+                            workbook = writer.book
+                            worksheet = writer.sheets['SEO Analysis']
+                            
+                            # Define formats
+                            header_format = workbook.add_format({
+                                'bold': True,
+                                'text_wrap': True,
+                                'valign': 'top',
+                                'fg_color': '#667eea',
+                                'font_color': 'white',
+                                'border': 1
+                            })
+                            
+                            # Apply header format
+                            for col_num, value in enumerate(export_df.columns.values):
+                                worksheet.write(0, col_num, value, header_format)
+                            
+                            # Set column widths
+                            worksheet.set_column('A:A', 25)  # File Name
+                            worksheet.set_column('B:E', 15)  # Score columns
+                            worksheet.set_column('F:H', 40)  # Summary columns
+                        
+                        st.download_button(
+                            label="📊 Download Excel Report",
+                            data=output.getvalue(),
+                            file_name=f"SEO_Comparison_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.xlsx",
+                            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                            help="Download comprehensive SEO analysis report in Excel format"
+                        )
+                    except Exception as e:
+                        st.error(f"Error creating Excel report: {str(e)}")
                 
                 with col2:
                     # CSV export
-                    csv = export_df.to_csv(index=False)
-                    st.download_button(
-                        label="📄 Download CSV Report",
-                        data=csv,
-                        file_name=f"SEO_Comparison_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
-                        mime="text/csv",
-                        help="Download analysis results in CSV format"
-                    )
+                    try:
+                        export_df_csv = export_df.copy()
+                        csv = export_df_csv.to_csv(index=False)
+                        st.download_button(
+                            label="📄 Download CSV Report",
+                            data=csv,
+                            file_name=f"SEO_Comparison_Report_{datetime.now().strftime('%Y%m%d_%H%M%S')}.csv",
+                            mime="text/csv",
+                            help="Download analysis results in CSV format"
+                        )
+                    except Exception as e:
+                        st.error(f"Error creating CSV report: {str(e)}")
         
         else:
             st.error("No files were successfully processed. Please check your file formats and try again.")
