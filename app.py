@@ -94,31 +94,18 @@ class SEOScorer:
         weaknesses = []
         detailed_analysis = {}
 
-        # Debug output
-        st.write(f"🔍 Debug Content SEO: Processing {len(df)} rows")
-
         # Meta Title Analysis
         title_score = 0
         if 'Title 1' in df.columns:
             valid_titles = df['Title 1'].notna()
-            valid_title_count = valid_titles.sum()
-            st.write(f"📝 Debug: Pages with titles: {valid_title_count}/{len(df)}")
-            
             if 'Title 1 Length' in df.columns:
                 good_length = (df['Title 1 Length'] >= 30) & (df['Title 1 Length'] <= 60)
-                good_length_count = (valid_titles & good_length).sum()
                 title_score = ((valid_titles & good_length).mean() * 100)
-                st.write(f"📏 Debug: Pages with good title length (30-60 chars): {good_length_count}/{len(df)}")
             else:
                 title_score = valid_titles.mean() * 100
-                st.write("⚠️ Debug: No 'Title 1 Length' column found")
             
             if title_score < 50:
                 weaknesses.append("Short or missing meta titles.")
-        else:
-            st.write("❌ Debug: No 'Title 1' column found")
-        
-        st.write(f"🏆 Debug: Title score = {title_score:.1f}")
         
         detailed_analysis['meta_title'] = {
             'status': '✓' if title_score >= 70 else '✗',
@@ -132,44 +119,26 @@ class SEOScorer:
         desc_score = 0
         if 'Meta Description 1' in df.columns:
             valid_desc = df['Meta Description 1'].notna()
-            valid_desc_count = valid_desc.sum()
-            st.write(f"📄 Debug: Pages with meta descriptions: {valid_desc_count}/{len(df)}")
-            
             if 'Meta Description 1 Length' in df.columns:
                 good_length = (df['Meta Description 1 Length'] >= 120) & (df['Meta Description 1 Length'] <= 160)
-                good_desc_length_count = (valid_desc & good_length).sum()
                 desc_score = ((valid_desc & good_length).mean() * 100)
-                st.write(f"📏 Debug: Pages with good desc length (120-160 chars): {good_desc_length_count}/{len(df)}")
             else:
                 desc_score = valid_desc.mean() * 100
-                st.write("⚠️ Debug: No 'Meta Description 1 Length' column found")
             
             if desc_score < 50:
                 weaknesses.append("Short or missing meta descriptions.")
-        else:
-            st.write("❌ Debug: No 'Meta Description 1' column found")
-            
-        st.write(f"🏆 Debug: Description score = {desc_score:.1f}")
         scores['meta_description'] = round(desc_score)
 
         # Headers Analysis
         h1_score = 0
         if 'H1-1' in df.columns:
-            h1_present = df['H1-1'].notna().sum()
             h1_score = df['H1-1'].notna().mean() * 100
-            st.write(f"📑 Debug: Pages with H1 tags: {h1_present}/{len(df)}")
             if h1_score < 50:
                 weaknesses.append("Missing or poorly optimized H1 tags.")
         elif 'H1' in df.columns:
-            h1_present = df['H1'].notna().sum()
             h1_score = df['H1'].notna().mean() * 100
-            st.write(f"📑 Debug: Pages with H1 tags: {h1_present}/{len(df)}")
             if h1_score < 50:
                 weaknesses.append("Missing or poorly optimized H1 tags.")
-        else:
-            st.write("❌ Debug: No H1 columns found")
-        
-        st.write(f"🏆 Debug: H1 score = {h1_score:.1f}")
         
         detailed_analysis['headers'] = {
             'status': '✓' if h1_score >= 70 else '✗',
@@ -200,16 +169,10 @@ class SEOScorer:
         # Internal linking
         internal_linking_score = 0
         if 'Inlinks' in df.columns:
-            has_inlinks_count = (df['Inlinks'] > 0).sum()
             has_inlinks = df['Inlinks'] > 0
             internal_linking_score = has_inlinks.mean() * 100
-            st.write(f"🔗 Debug: Pages with internal links: {has_inlinks_count}/{len(df)}")
             if internal_linking_score < 50:
                 weaknesses.append("Insufficient internal linking.")
-        else:
-            st.write("❌ Debug: No 'Inlinks' column found")
-        
-        st.write(f"🏆 Debug: Internal linking score = {internal_linking_score:.1f}")
         
         detailed_analysis['internal_linking'] = {
             'status': '✓' if internal_linking_score >= 70 else '✗',
@@ -227,75 +190,26 @@ class SEOScorer:
             'needs_improvement': False
         }
 
-        overall_score = round(np.mean(list(scores.values())))
-        st.write(f"🎯 Debug: Overall Content SEO score = {overall_score}")
-        
-        return overall_score, scores, weaknesses, detailed_analysis
+        return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
 
     def analyze_technical_seo(self, df):
         scores = {}
         weaknesses = []
         detailed_analysis = {}
 
-        st.write(f"🔍 Debug Technical SEO: Processing {len(df)} rows")
-
         # Response Time Analysis
         response_score = 0
         avg_response_time = 2.0  # Default
         
         if 'Response Time' in df.columns:
-            response_times = df['Response Time'].dropna()
-            if len(response_times) > 0:
-                avg_response = response_times.mean()
-                good_response_count = (df['Response Time'] <= 1.0).sum()
-                good_response = df['Response Time'] <= 1.0
-                response_score = good_response.mean() * 100
-                avg_response_time = avg_response
-                st.write(f"⚡ Debug: Pages with good response time (≤1s): {good_response_count}/{len(df)}")
-                st.write(f"⏱️ Debug: Average response time: {avg_response_time:.2f}s")
-                if response_score < 50:
-                    weaknesses.append("Slow response times.")
-            else:
-                st.write("⚠️ Debug: No valid response time data")
-        else:
-            st.write("❌ Debug: No 'Response Time' column found")
+            avg_response = df['Response Time'].mean()
+            good_response = df['Response Time'] <= 1.0
+            response_score = good_response.mean() * 100
+            avg_response_time = avg_response
+            if response_score < 50:
+                weaknesses.append("Slow response times.")
         
-        st.write(f"🏆 Debug: Response score = {response_score:.1f}")
         scores['response_time'] = round(response_score)
-
-        # Status Code Analysis
-        status_score = 85  # Default
-        if 'Status Code' in df.columns:
-            status_counts = df['Status Code'].value_counts()
-            st.write(f"📊 Debug: Status code distribution: {dict(status_counts)}")
-            good_status_count = (df['Status Code'] == 200).sum()
-            good_status = df['Status Code'] == 200
-            status_score = good_status.mean() * 100
-            st.write(f"✅ Debug: Pages with 200 status: {good_status_count}/{len(df)}")
-            if status_score < 70:
-                weaknesses.append("Issues with HTTP status codes.")
-        else:
-            st.write("❌ Debug: No 'Status Code' column found")
-            
-        st.write(f"🏆 Debug: Status score = {status_score:.1f}")
-        scores['status_codes'] = round(status_score)
-
-        # Indexability Analysis
-        index_score = 80  # Default
-        if 'Indexability' in df.columns:
-            indexability_counts = df['Indexability'].value_counts()
-            st.write(f"🔍 Debug: Indexability distribution: {dict(indexability_counts)}")
-            indexable_count = (df['Indexability'] == 'Indexable').sum()
-            indexable = df['Indexability'] == 'Indexable'
-            index_score = indexable.mean() * 100
-            st.write(f"📇 Debug: Indexable pages: {indexable_count}/{len(df)}")
-            if index_score < 70:
-                weaknesses.append("Pages not indexable.")
-        else:
-            st.write("❌ Debug: No 'Indexability' column found")
-            
-        st.write(f"🏆 Debug: Indexability score = {index_score:.1f}")
-        scores['indexability'] = round(index_score)
 
         # Mobile and Desktop Speed Analysis
         detailed_analysis['mobile_speed'] = {
@@ -312,6 +226,24 @@ class SEOScorer:
             'description': f'Desktop Speed: {desktop_speed:.1f}s',
             'needs_improvement': desktop_speed > 3
         }
+
+        # Status Code Analysis
+        status_score = 85  # Default
+        if 'Status Code' in df.columns:
+            good_status = df['Status Code'] == 200
+            status_score = good_status.mean() * 100
+            if status_score < 70:
+                weaknesses.append("Issues with HTTP status codes.")
+        scores['status_codes'] = round(status_score)
+
+        # Indexability Analysis
+        index_score = 80  # Default
+        if 'Indexability' in df.columns:
+            indexable = df['Indexability'] == 'Indexable'
+            index_score = indexable.mean() * 100
+            if index_score < 70:
+                weaknesses.append("Pages not indexable.")
+        scores['indexability'] = round(index_score)
 
         # Additional technical factors with realistic defaults
         detailed_analysis['image_optimization'] = {
@@ -356,36 +288,23 @@ class SEOScorer:
             'needs_improvement': False
         }
 
-        overall_score = round(np.mean(list(scores.values())))
-        st.write(f"🎯 Debug: Overall Technical SEO score = {overall_score}")
-        
-        return overall_score, scores, weaknesses, detailed_analysis
+        return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
 
     def analyze_user_experience(self, df):
         scores = {}
         weaknesses = []
         detailed_analysis = {}
 
-        st.write(f"🔍 Debug User Experience: Processing {len(df)} rows")
-
         # Mobile Friendliness Analysis
         mobile_score = 60  # Default
         if 'Mobile Alternate Link' in df.columns:
-            mobile_links_count = df['Mobile Alternate Link'].notna().sum()
             mobile_score = df['Mobile Alternate Link'].notna().mean() * 100
-            st.write(f"📱 Debug: Pages with mobile alternate links: {mobile_links_count}/{len(df)}")
         elif 'Viewport' in df.columns:
-            viewport_count = df['Viewport'].notna().sum()
             has_viewport = df['Viewport'].notna()
             mobile_score = has_viewport.mean() * 100
-            st.write(f"📱 Debug: Pages with viewport meta: {viewport_count}/{len(df)}")
-        else:
-            st.write("❌ Debug: No mobile-related columns found")
             
         if mobile_score < 50:
             weaknesses.append("Pages not mobile-friendly.")
-        
-        st.write(f"🏆 Debug: Mobile score = {mobile_score:.1f}")
         
         detailed_analysis['mobile_friendly'] = {
             'status': '✓' if mobile_score >= 70 else '✗',
@@ -406,49 +325,22 @@ class SEOScorer:
         # Core Web Vitals - LCP
         lcp_score = 55  # Default
         if 'Largest Contentful Paint Time (ms)' in df.columns:
-            lcp_data = df['Largest Contentful Paint Time (ms)'].dropna()
-            if len(lcp_data) > 0:
-                good_lcp_count = (df['Largest Contentful Paint Time (ms)'] <= 2500).sum()
-                good_lcp = df['Largest Contentful Paint Time (ms)'] <= 2500
-                lcp_score = good_lcp.mean() * 100
-                avg_lcp = lcp_data.mean()
-                st.write(f"🚀 Debug: Pages with good LCP (≤2.5s): {good_lcp_count}/{len(df)}")
-                st.write(f"⏱️ Debug: Average LCP: {avg_lcp:.0f}ms")
-                if lcp_score < 50:
-                    weaknesses.append("Slow LCP times.")
-            else:
-                st.write("⚠️ Debug: No valid LCP data")
-        else:
-            st.write("❌ Debug: No 'Largest Contentful Paint Time (ms)' column found")
-            
-        st.write(f"🏆 Debug: LCP score = {lcp_score:.1f}")
+            good_lcp = df['Largest Contentful Paint Time (ms)'] <= 2500
+            lcp_score = good_lcp.mean() * 100
+            if lcp_score < 50:
+                weaknesses.append("Slow LCP times.")
         scores['largest_contentful_paint'] = round(lcp_score)
 
         # Cumulative Layout Shift
         cls_score = 70  # Default
         if 'Cumulative Layout Shift' in df.columns:
-            cls_data = df['Cumulative Layout Shift'].dropna()
-            if len(cls_data) > 0:
-                good_cls_count = (df['Cumulative Layout Shift'] <= 0.1).sum()
-                good_cls = df['Cumulative Layout Shift'] <= 0.1
-                cls_score = good_cls.mean() * 100
-                avg_cls = cls_data.mean()
-                st.write(f"📐 Debug: Pages with good CLS (≤0.1): {good_cls_count}/{len(df)}")
-                st.write(f"📊 Debug: Average CLS: {avg_cls:.3f}")
-                if cls_score < 50:
-                    weaknesses.append("High CLS values.")
-            else:
-                st.write("⚠️ Debug: No valid CLS data")
-        else:
-            st.write("❌ Debug: No 'Cumulative Layout Shift' column found")
-            
-        st.write(f"🏆 Debug: CLS score = {cls_score:.1f}")
+            good_cls = df['Cumulative Layout Shift'] <= 0.1
+            cls_score = good_cls.mean() * 100
+            if cls_score < 50:
+                weaknesses.append("High CLS values.")
         scores['cumulative_layout_shift'] = round(cls_score)
 
-        overall_score = round(np.mean(list(scores.values())))
-        st.write(f"🎯 Debug: Overall User Experience score = {overall_score}")
-
-        return overall_score, scores, weaknesses, detailed_analysis
+        return round(np.mean(list(scores.values()))), scores, weaknesses, detailed_analysis
 
     def analyze_offpage_seo(self, df):
         """Analyze off-page SEO factors"""
@@ -482,7 +374,6 @@ class SEOScorer:
         }
 
         overall_score = sum(weighted_scores.values()) * 100
-        st.write(f"🎯 Debug: Final weighted overall score = {overall_score:.1f}")
         return round(overall_score)
 
 def get_score_color_class(score):
@@ -648,40 +539,14 @@ def main():
                 else:
                     df = pd.read_excel(uploaded_file)
                 
-                # Debug section - show file details
-                with st.expander(f"🔍 Debug Info for {uploaded_file.name} - Click to expand"):
-                    st.write(f"**File:** {uploaded_file.name}")
-                    st.write(f"**Shape:** {df.shape[0]} rows × {df.shape[1]} columns")
-                    st.write("**First 20 columns:**", df.columns.tolist()[:20])
-                    st.write("**Data preview:**")
-                    st.dataframe(df.head(3))
-                    
-                    # Key metrics check
-                    if 'Status Code' in df.columns:
-                        st.write("**Status codes:**", dict(df['Status Code'].value_counts()))
-                    if 'Indexability' in df.columns:
-                        st.write("**Indexability:**", dict(df['Indexability'].value_counts()))
-                    if 'Title 1' in df.columns:
-                        st.write(f"**Pages with titles:** {df['Title 1'].notna().sum()}/{len(df)}")
-                    if 'Response Time' in df.columns:
-                        st.write(f"**Average response time:** {df['Response Time'].mean():.2f}s")
-                
                 scorer = SEOScorer()
                 
-                # Analyze each category with debug output
-                st.write(f"## 🔍 Analyzing {uploaded_file.name}")
+                # Analyze each category
                 content_score, content_details, content_weaknesses, content_detailed = scorer.analyze_content_seo(df)
                 technical_score, technical_details, technical_weaknesses, technical_detailed = scorer.analyze_technical_seo(df)
                 ux_score, ux_details, ux_weaknesses, ux_detailed = scorer.analyze_user_experience(df)
                 offpage_detailed = scorer.analyze_offpage_seo(df)
                 overall_score = scorer.calculate_overall_score(content_score, technical_score, ux_score)
-                
-                st.write(f"## 🎯 Final Scores for {uploaded_file.name}")
-                st.write(f"- **Content SEO:** {content_score}/100")
-                st.write(f"- **Technical SEO:** {technical_score}/100") 
-                st.write(f"- **User Experience:** {ux_score}/100")
-                st.write(f"- **Overall Score:** {overall_score}/100")
-                st.write("---")
                 
                 comparison_data.append({
                     "File Name": uploaded_file.name,
@@ -706,7 +571,6 @@ def main():
                 
             except Exception as e:
                 st.error(f"Error processing {uploaded_file.name}: {str(e)}")
-                st.exception(e)  # Show full error traceback
                 continue
         
         # Clear progress indicators
@@ -764,7 +628,7 @@ def main():
                 sorted_data = sorted(comparison_data, key=lambda x: x['Overall Readiness'], reverse=True)
                 
                 # Display results
-                for idx, data in enumerate(sorted_data):
+                for data in sorted_data:
                     site_name = data['File Name'].replace('.xlsx', '').replace('_', ' ')
                     overall_score = data['Overall Readiness']
                     
@@ -773,15 +637,15 @@ def main():
                         
                         with col1:
                             fig1 = create_gauge_chart(data['Content SEO'], 'Content SEO')
-                            st.plotly_chart(fig1, use_container_width=True, key=f"content_gauge_{idx}")
+                            st.plotly_chart(fig1, use_container_width=True)
                         
                         with col2:
                             fig2 = create_gauge_chart(data['Technical SEO'], 'Technical SEO')
-                            st.plotly_chart(fig2, use_container_width=True, key=f"technical_gauge_{idx}")
+                            st.plotly_chart(fig2, use_container_width=True)
                         
                         with col3:
                             fig3 = create_gauge_chart(data['User Experience'], 'User Experience')
-                            st.plotly_chart(fig3, use_container_width=True, key=f"ux_gauge_{idx}")
+                            st.plotly_chart(fig3, use_container_width=True)
                 
                 # Add scoring legend
                 st.markdown("### Scoring Legend")
@@ -965,7 +829,7 @@ def main():
                         except Exception as e:
                             st.error(f"Error creating CSV file for {site_name}: {str(e)}")
                     
-                    # Display the tables in Streamlit
+                    # Display audit tables
                     st.markdown("#### Content SEO")
                     content_data = []
                     for key, details in analysis['Content Analysis'].items():
@@ -1016,7 +880,7 @@ def main():
                 st.markdown("## 🎯 Competitive Analysis")
                 if len(comparison_data) > 1:
                     radar_chart = create_comparison_chart(comparison_df)
-                    st.plotly_chart(radar_chart, use_container_width=True, key="comparison_radar")
+                    st.plotly_chart(radar_chart, use_container_width=True)
                 else:
                     # Single site gauge charts
                     col1, col2, col3 = st.columns(3)
@@ -1024,15 +888,15 @@ def main():
                     
                     with col1:
                         fig1 = create_gauge_chart(data['Content SEO'], 'Content SEO')
-                        st.plotly_chart(fig1, use_container_width=True, key="single_content_gauge")
+                        st.plotly_chart(fig1, use_container_width=True)
                     
                     with col2:
                         fig2 = create_gauge_chart(data['Technical SEO'], 'Technical SEO')
-                        st.plotly_chart(fig2, use_container_width=True, key="single_technical_gauge")
+                        st.plotly_chart(fig2, use_container_width=True)
                     
                     with col3:
                         fig3 = create_gauge_chart(data['User Experience'], 'User Experience')
-                        st.plotly_chart(fig3, use_container_width=True, key="single_ux_gauge")
+                        st.plotly_chart(fig3, use_container_width=True)
                 
                 # Detailed comparison table
                 st.markdown("## 📋 Detailed Comparison")
