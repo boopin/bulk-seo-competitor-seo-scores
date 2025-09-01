@@ -628,7 +628,7 @@ def main():
                 sorted_data = sorted(comparison_data, key=lambda x: x['Overall Readiness'], reverse=True)
                 
                 # Display results
-                for data in sorted_data:
+                for idx, data in enumerate(sorted_data):
                     site_name = data['File Name'].replace('.xlsx', '').replace('_', ' ')
                     overall_score = data['Overall Readiness']
                     
@@ -637,15 +637,15 @@ def main():
                         
                         with col1:
                             fig1 = create_gauge_chart(data['Content SEO'], 'Content SEO')
-                            st.plotly_chart(fig1, use_container_width=True)
+                            st.plotly_chart(fig1, use_container_width=True, key=f"content_gauge_{idx}")
                         
                         with col2:
                             fig2 = create_gauge_chart(data['Technical SEO'], 'Technical SEO')
-                            st.plotly_chart(fig2, use_container_width=True)
+                            st.plotly_chart(fig2, use_container_width=True, key=f"technical_gauge_{idx}")
                         
                         with col3:
                             fig3 = create_gauge_chart(data['User Experience'], 'User Experience')
-                            st.plotly_chart(fig3, use_container_width=True)
+                            st.plotly_chart(fig3, use_container_width=True, key=f"ux_gauge_{idx}")
                 
                 # Add scoring legend
                 st.markdown("### Scoring Legend")
@@ -888,15 +888,15 @@ def main():
                     
                     with col1:
                         fig1 = create_gauge_chart(data['Content SEO'], 'Content SEO')
-                        st.plotly_chart(fig1, use_container_width=True)
+                        st.plotly_chart(fig1, use_container_width=True, key="single_content_gauge")
                     
                     with col2:
                         fig2 = create_gauge_chart(data['Technical SEO'], 'Technical SEO')
-                        st.plotly_chart(fig2, use_container_width=True)
+                        st.plotly_chart(fig2, use_container_width=True, key="single_technical_gauge")
                     
                     with col3:
                         fig3 = create_gauge_chart(data['User Experience'], 'User Experience')
-                        st.plotly_chart(fig3, use_container_width=True)
+                        st.plotly_chart(fig3, use_container_width=True, key="single_ux_gauge")
                 
                 # Detailed comparison table
                 st.markdown("## 📋 Detailed Comparison")
